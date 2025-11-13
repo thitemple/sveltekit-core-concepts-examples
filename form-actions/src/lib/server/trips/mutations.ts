@@ -18,18 +18,16 @@ export type CreateEntryValues = {
 
 export async function createEntry(tripId: string, values: CreateEntryValues) {
 	await delay(1500);
-	const id = crypto.randomUUID();
-	await db
-		.insert(entry)
-		.values({
-			id,
-			tripId,
-			title: values.title ?? null,
-			description: values.description ?? null,
-			timestamp: values.timestamp ?? Date.now()
-		})
-		.execute();
-	return { id };
+	const record = {
+		id: crypto.randomUUID(),
+		tripId,
+		title: values.title ?? null,
+		description: values.description ?? null,
+		timestamp: values.timestamp ?? Date.now()
+	};
+
+	await db.insert(entry).values(record).execute();
+	return record;
 }
 
 export async function deleteEntry(entryId: string) {

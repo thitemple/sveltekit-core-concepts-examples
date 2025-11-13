@@ -4,6 +4,7 @@
 	import type { SubmitFunction } from '@sveltejs/kit';
 
 	const { data, form } = $props();
+	let entries = $state([...data.entries]);
 
 	const activeIndex = $derived(data.trips.findIndex((candidate) => candidate.id === data.trip.id));
 	const previousTrip = $derived(activeIndex > 0 ? data.trips[activeIndex - 1] : null);
@@ -18,7 +19,7 @@
 	const toEntriesPageHref = (page: number) => `?page=${page}`;
 
 	const accordionEntries = $derived(
-		data.entries.map((entry, index) => ({
+		entries.map((entry, index) => ({
 			...entry,
 			disclosureId: `entry-${entry.id ?? index}`
 		}))
@@ -33,6 +34,7 @@
 	let addEntryForm: HTMLFormElement | null = null;
 	let addEntryTitleInput: HTMLInputElement | null = null;
 	let isAddEntryDialogOpen = $state(false);
+	let isSavingEntry = $state(false);
 
 	const focusAddEntryTitle = () => {
 		queueMicrotask(() => addEntryTitleInput?.focus());
@@ -56,12 +58,21 @@
 	};
 
 	const handleAddEntrySubmit: SubmitFunction = () => {
+		isSavingEntry = true;
 		return async ({ result, update }) => {
-			if (result.type === 'success' || result.type === 'redirect') {
-				closeAddEntryDialog();
-			}
+			try {
+				if (result.type === 'success') {
+					const newEntry = result.data?.entry;
+					if (newEntry) {
+						entries = [newEntry, ...entries];
+					}
+					closeAddEntryDialog();
+				}
 
-			await update();
+				await update({ invalidateAll: false });
+			} finally {
+				isSavingEntry = false;
+			}
 		};
 	};
 </script>
@@ -199,7 +210,7 @@
 							id={addEntryTitleId}
 							name="title"
 							required
-							value={form?.fields.title}
+							value={form?.fields?.title}
 							class="block w-full rounded border border-slate-300 px-3 py-2"
 						/>
 					</div>
@@ -211,7 +222,7 @@
 							id={addEntryDescriptionId}
 							name="description"
 							rows="3"
-							value={form?.fields.description}
+							value={form?.fields?.description}
 							class="block w-full rounded border border-slate-300 px-3 py-2"
 						></textarea>
 					</div>
@@ -225,9 +236,38 @@
 						</button>
 						<button
 							type="submit"
-							class="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600"
+							class="inline-flex items-center justify-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:cursor-not-allowed disabled:opacity-80"
+							disabled={isSavingEntry}
+							aria-busy={isSavingEntry ? 'true' : 'false'}
 						>
-							Save entry
+							{#if isSavingEntry}
+								<svg
+									class="h-4 w-4 animate-spin"
+									viewBox="0 0 24 24"
+									fill="none"
+									role="status"
+									aria-hidden="true"
+								>
+									<circle
+										class="opacity-25"
+										cx="12"
+										cy="12"
+										r="10"
+										stroke="currentColor"
+										stroke-width="4"
+									/>
+									<path
+										class="opacity-75"
+										d="M4 12a8 8 0 018-8"
+										stroke="currentColor"
+										stroke-width="4"
+										stroke-linecap="round"
+									/>
+								</svg>
+								<span>Saving…</span>
+							{:else}
+								Save entry
+							{/if}
 						</button>
 					</div>
 				</form>

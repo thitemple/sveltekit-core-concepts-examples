@@ -3,7 +3,6 @@ import { redirect, error, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
 export async function load({ params, url }) {
-	console.log('DAS loading', params, url);
 	const requestedPage = Number(url.searchParams.get('page') ?? '1');
 	const currentPage = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1;
 
@@ -36,7 +35,8 @@ export const actions: Actions = {
 			});
 		}
 
-		await createEntry(params.id, { title, description });
+		const entry = await createEntry(params.id, { title, description });
+		return { entry };
 	},
 
 	deleteEntry: async ({ request, url }) => {
