@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+dialog.modal-centered {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	margin: 0;
+	max-height: calc(100vh - 2rem);
+	overflow: auto;
+}
+
+dialog.modal-centered::backdrop {
+	background-color: rgba(15, 23, 42, 0.45);
+	backdrop-filter: blur(2px);
+}
