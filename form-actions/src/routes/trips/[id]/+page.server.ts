@@ -35,11 +35,6 @@ export const actions: Actions = {
 			});
 		}
 
-		return fail(400, {
-			errors: { form: 'Just a test' },
-			fields: { title, description }
-		});
-
 		const entry = await createEntry(params.id, { title, description });
 		return { entry };
 	},

@@ -19,7 +19,7 @@ export type CreateEntryValues = {
 export async function createEntry(tripId: string, values: CreateEntryValues) {
 	await delay(1500);
 	const record = {
-		id: crypto.randomUUID(),
+		id: crypto.randomUUID().toString(),
 		tripId,
 		title: values.title ?? null,
 		description: values.description ?? null,

@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import type { SubmitFunction } from '@sveltejs/kit';
-	import type { stat } from 'fs';
 
 	const { data, form } = $props();
 	let entries = $state([...data.entries]);
@@ -58,9 +57,20 @@
 			tripId: page.params.id!,
 			timestamp: new Date().getTime()
 		} satisfies (typeof data)['entries'][number];
+
 		entries = [newEntry, ...entries];
 		closeAddEntryDialog();
-		return async ({ update }) => {
+
+			return async ({ update, result }) => {
+				if (result.type === 'success' && result.data && 'entry' in result.data) {
+					const created = result.data.entry as (typeof data)['entries'][number];
+				entries = entries.map((entry) => (entry.id === newEntry.id ? created : entry));
+			}
+
+			if (result.type === 'failure') {
+				entries = entries.filter((entry) => entry.id !== newEntry.id);
+			}
+
 			await update({ invalidateAll: false });
 		};
 	};
@@ -280,7 +290,7 @@
 									commandfor={entry.disclosureId}
 									class="flex w-full cursor-pointer items-start justify-between text-left text-slate-900"
 								>
-									<span class="text-base leading-7 font-semibold">
+									<span class="text-base font-semibold leading-7">
 										{entry.title ?? 'Untitled entry'}
 									</span>
 									<span class="ml-6 flex h-7 items-center">
@@ -291,7 +301,7 @@
 											stroke-width="1.5"
 											data-slot="icon"
 											aria-hidden="true"
-											class="h-6 w-6 in-aria-expanded:hidden"
+											class="in-aria-expanded:hidden h-6 w-6"
 										>
 											<path d="M12 6v12m6-6H6" stroke-linecap="round" stroke-linejoin="round" />
 										</svg>
@@ -302,7 +312,7 @@
 											stroke-width="1.5"
 											data-slot="icon"
 											aria-hidden="true"
-											class="h-6 w-6 not-in-aria-expanded:hidden"
+											class="not-in-aria-expanded:hidden h-6 w-6"
 										>
 											<path d="M18 12H6" stroke-linecap="round" stroke-linejoin="round" />
 										</svg>
@@ -401,7 +411,7 @@
 			href={toTripHref(previousTrip.id)}
 			class="flex flex-col items-start gap-1 rounded-md px-3 py-2 transition hover:bg-slate-100 hover:text-slate-900"
 		>
-			<span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Previous trip</span
+			<span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Previous trip</span
 			>
 			<span class="text-base font-semibold text-slate-800">{previousTrip.destination}</span>
 		</a>
@@ -414,7 +424,7 @@
 			href={toTripHref(nextTrip.id)}
 			class="flex flex-col items-end gap-1 rounded-md px-3 py-2 text-right transition hover:bg-slate-100 hover:text-slate-900"
 		>
-			<span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Next trip</span>
+			<span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Next trip</span>
 			<span class="text-base font-semibold text-slate-800">{nextTrip.destination}</span>
 		</a>
 	{:else}
