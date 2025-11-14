@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import type { stat } from 'fs';
 
 	const { data, form } = $props();
 	let entries = $state([...data.entries]);
@@ -31,20 +32,13 @@
 	const addEntryTitleId = $derived(`${addEntryDialogId}-title`);
 	const addEntryDescriptionId = $derived(`${addEntryDialogId}-description`);
 	let addEntryDialog: HTMLDialogElement | null = null;
-	let addEntryForm: HTMLFormElement | null = null;
-	let addEntryTitleInput: HTMLInputElement | null = null;
 	let isAddEntryDialogOpen = $state(false);
 	let isSavingEntry = $state(false);
-
-	const focusAddEntryTitle = () => {
-		queueMicrotask(() => addEntryTitleInput?.focus());
-	};
 
 	const openAddEntryDialog = () => {
 		if (!addEntryDialog || addEntryDialog.open) return;
 		addEntryDialog.showModal();
 		isAddEntryDialogOpen = true;
-		focusAddEntryTitle();
 	};
 
 	const closeAddEntryDialog = () => {
@@ -54,25 +48,29 @@
 
 	const handleDialogClose = () => {
 		isAddEntryDialogOpen = false;
-		addEntryForm?.reset();
 	};
 
-	const handleAddEntrySubmit: SubmitFunction = () => {
-		isSavingEntry = true;
-		return async ({ result, update }) => {
-			try {
-				if (result.type === 'success') {
-					const newEntry = result.data?.entry;
-					if (newEntry) {
-						entries = [newEntry, ...entries];
-					}
-					closeAddEntryDialog();
-				}
+	const handleAddEntrySubmit: SubmitFunction = ({ formData }) => {
+		const newEntry = {
+			id: crypto.randomUUID(),
+			title: String(formData.get('title')),
+			description: String(formData.get('description')),
+			tripId: page.params.id!,
+			timestamp: new Date().getTime()
+		} satisfies (typeof data)['entries'][number];
+		entries = [newEntry, ...entries];
+		closeAddEntryDialog();
+		return async ({ update }) => {
+			await update({ invalidateAll: false });
+		};
+	};
 
-				await update({ invalidateAll: false });
-			} finally {
-				isSavingEntry = false;
-			}
+	const handleDeleteEntrySubmit: SubmitFunction = ({ formData }) => {
+		const entryId = String(formData.get('entryId') ?? '');
+		if (!entryId) return;
+		entries = entries.filter((entry) => entry.id !== entryId);
+		return async ({ update }) => {
+			await update({ invalidateAll: false });
 		};
 	};
 </script>
@@ -186,7 +184,6 @@
 				aria-modal="true"
 			>
 				<form
-					bind:this={addEntryForm}
 					method="POST"
 					action="?/addEntry"
 					class="space-y-5"
@@ -206,7 +203,6 @@
 							>Title</label
 						>
 						<input
-							bind:this={addEntryTitleInput}
 							id={addEntryTitleId}
 							name="title"
 							required
@@ -318,7 +314,12 @@
 									<p class="text-base leading-7 text-slate-600">
 										{entry.description ?? 'No details provided for this entry yet.'}
 									</p>
-									<form method="POST" action="?/deleteEntry" class="inline">
+									<form
+										method="POST"
+										action="?/deleteEntry"
+										class="inline"
+										use:enhance={handleDeleteEntrySubmit}
+									>
 										<div class="text-right">
 											<input type="hidden" name="entryId" value={entry.id} />
 											<button class="cursor-pointer text-sm text-red-600 hover:underline"

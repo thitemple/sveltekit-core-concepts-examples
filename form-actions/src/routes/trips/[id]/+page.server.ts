@@ -1,5 +1,5 @@
 import { getEntries, getPhotos, getTripById, createEntry, deleteEntry } from '$lib/server/trips';
-import { redirect, error, fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 
 export async function load({ params, url }) {
@@ -35,14 +35,22 @@ export const actions: Actions = {
 			});
 		}
 
+		return fail(400, {
+			errors: { form: 'Just a test' },
+			fields: { title, description }
+		});
+
 		const entry = await createEntry(params.id, { title, description });
 		return { entry };
 	},
 
-	deleteEntry: async ({ request, url }) => {
+	deleteEntry: async ({ request }) => {
 		const data = await request.formData();
 		const entryId = String(data.get('entryId') ?? '');
-		if (entryId) await deleteEntry(entryId);
-		throw redirect(303, url.pathname + url.search);
+		if (!entryId) {
+			return fail(400, { errors: { form: 'Entry not found' } });
+		}
+		await deleteEntry(entryId);
+		return { deletedEntryId: entryId };
 	}
 };
