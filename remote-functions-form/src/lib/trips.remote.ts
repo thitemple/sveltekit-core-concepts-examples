@@ -1,4 +1,5 @@
-import { query } from "$app/server";
+import { command, form, query } from "$app/server";
+import { invalid, redirect } from "@sveltejs/kit";
 import {
 	getAllTrips,
 	getEntries,
@@ -6,6 +7,10 @@ import {
 	getTripById,
 	getPaginatedTrips as getPaginatedTripsFromDb,
 	getTripActivityStats,
+	getTripByName,
+	createTrip,
+	createEntry,
+	deleteEntry,
 } from "./server/trips";
 import * as v from "valibot";
 
@@ -59,3 +64,59 @@ export const getTripStats = query.batch(v.string(), async (tripIds) => {
 			photoCount: 0,
 		};
 });
+
+export const createTripForm = form(
+	v.object({
+		destination: v.pipe(v.string(), v.nonEmpty("Destination is required"), v.trim()),
+		startDate: v.pipe(v.string(), v.nonEmpty("Start date is required")),
+		endDate: v.string(),
+	}),
+	async ({ destination, startDate, endDate }, issue) => {
+		const existingTrip = await getTripByName(destination);
+		if (existingTrip) {
+			return invalid(issue.destination("Destination already exists"));
+		}
+
+		const trip = await createTrip({
+			destination,
+			startDate,
+			endDate,
+		});
+
+		return {
+			success: true,
+			trip,
+		};
+	},
+);
+
+export const createEntryForm = form(
+	v.object({
+		tripId: v.pipe(v.string(), v.nonEmpty("A tripId is required")),
+		title: v.pipe(v.string(), v.nonEmpty("A title is required")),
+		description: v.pipe(v.string(), v.nonEmpty("A description is required")),
+	}),
+	async ({ tripId, title, description }) => {
+		const entry = await createEntry(tripId, { title, description });
+
+		return {
+			success: true,
+			entry,
+		};
+	},
+);
+
+export const deleteEntryForm = form(v.object({ entryId: v.string() }), async ({ entryId }) => {
+	await deleteEntry(entryId);
+
+	return { deletedEntryId: entryId };
+});
+
+export const deleteEntryCommand = command(
+	v.object({ entryId: v.string() }),
+	async ({ entryId }) => {
+		await deleteEntry(entryId);
+
+		return { deletedEntryId: entryId };
+	},
+);

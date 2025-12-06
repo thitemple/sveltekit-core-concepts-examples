@@ -35,7 +35,7 @@ export const actions: Actions = {
 
 		if (existingTrip) {
 			return fail(400, {
-				errors: { destination: "Destination already exists" },
+				errors: { destination: "Destination already exists", startDate: "", endDate: "" },
 				values: { destination, startDate, endDate },
 			});
 		}

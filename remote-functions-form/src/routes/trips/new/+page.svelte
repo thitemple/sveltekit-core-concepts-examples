@@ -1,11 +1,7 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
+	import { createTripForm } from "$lib/trips.remote.js";
 	import type { Snapshot } from "@sveltejs/kit";
-
-	let { form } = $props();
-
-	let destination = $state<string>(form?.values?.destination ?? "");
-	let startDate = $state<string>(form?.values?.startDate ?? "");
-	let endDate = $state<string>(form?.values?.endDate ?? "");
 
 	// Snapshot: keep the draft form values across navigations
 	export const snapshot: Snapshot<{
@@ -14,14 +10,14 @@
 		endDate: string;
 	}> = {
 		capture: () => ({
-			destination,
-			startDate,
-			endDate,
+			destination: createTripForm.fields.destination.value(),
+			startDate: createTripForm.fields.startDate.value(),
+			endDate: createTripForm.fields.endDate.value(),
 		}),
 		restore: (value) => {
-			destination = value.destination;
-			startDate = value.startDate;
-			endDate = value.endDate;
+			createTripForm.fields.set({
+				...value,
+			});
 		},
 	};
 </script>
@@ -31,46 +27,52 @@
 		<h1 class="text-2xl font-semibold text-slate-900">Create a Trip</h1>
 		<p class="mt-1 text-sm text-slate-600">Add a destination to start planning a new adventure.</p>
 	</div>
-	<form method="POST" class="max-w-md space-y-5">
+	<form
+		{...createTripForm.enhance(async ({ form, data, submit }) => {
+			try {
+				await submit();
+				form.reset();
+
+				if (createTripForm.result?.success) {
+					goto(`/trips/${createTripForm.result.trip.id}`);
+				}
+			} catch (error) {
+				// show general error message
+			}
+		})}
+		class="max-w-md space-y-5"
+	>
 		<div class="space-y-1">
 			<label for="destination" class="text-sm font-medium text-slate-700"> Destination </label>
 			<input
-				id="destination"
-				name="destination"
-				bind:value={destination}
+				{...createTripForm.fields.destination.as("text")}
 				class="block w-full rounded border border-slate-300 px-3 py-2 text-sm"
 			/>
-			{#if form?.errors?.destination}
+			{#each createTripForm.fields.destination.issues() as issue}
 				<p class="mt-1 text-xs text-red-600">
-					{form.errors.destination}
+					{issue.message}
 				</p>
-			{/if}
+			{/each}
 		</div>
 
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="space-y-1">
 				<label for="startDate" class="text-sm font-medium text-slate-700"> Start date </label>
 				<input
-					id="startDate"
-					type="date"
-					name="startDate"
-					bind:value={startDate}
+					{...createTripForm.fields.startDate.as("date")}
 					class="block w-full rounded border border-slate-300 px-3 py-2 text-sm"
 				/>
-				{#if form?.errors?.startDate}
+				{#each createTripForm.fields.startDate.issues() as issue}
 					<p class="mt-1 text-xs text-red-600">
-						{form.errors.startDate}
+						{issue.message}
 					</p>
-				{/if}
+				{/each}
 			</div>
 
 			<div class="space-y-1">
 				<label for="endDate" class="text-sm font-medium text-slate-700"> End date </label>
 				<input
-					id="endDate"
-					type="date"
-					name="endDate"
-					bind:value={endDate}
+					{...createTripForm.fields.endDate.as("date")}
 					class="block w-full rounded border border-slate-300 px-3 py-2 text-sm"
 				/>
 			</div>
